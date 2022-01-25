@@ -1,7 +1,9 @@
 pub mod bench;
 pub mod board_constants;
+pub mod debug;
 pub mod eval;
 pub mod gamestate;
+pub mod group_predicates;
 pub mod rules;
 pub mod solver;
 
@@ -10,7 +12,6 @@ use crate::bench::eval_test_two;
 use crate::eval::eval;
 use crate::gamestate::GameState;
 use crate::solver::ConspiracySolver;
-use crate::solver::Node;
 use std::env;
 
 fn main() {

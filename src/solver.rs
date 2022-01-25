@@ -1,9 +1,7 @@
-use crate::board_constants::U64Ext;
 use crate::eval::eval;
 use crate::gamestate::GameState;
 use petgraph::graph::Graph;
 use petgraph::graph::NodeIndex;
-use petgraph::visit::IntoNeighborsDirected;
 use petgraph::Directed;
 use petgraph::EdgeDirection::{Incoming, Outgoing};
 use std::cmp::Ordering;
@@ -45,7 +43,7 @@ impl Sub for ConspiracyNumber {
     fn sub(self, other: Self) -> Self::Output {
         match (self, other) {
             (ConspiracyNumber::Num(n), ConspiracyNumber::Num(m)) => Self::Num(n + m),
-            (ConspiracyNumber::Inf, ConspiracyNumber::Num(n)) => Self::Inf,
+            (ConspiracyNumber::Inf, ConspiracyNumber::Num(_)) => Self::Inf,
             _ => panic!("Tried to subtract infinity"),
         }
     }
@@ -74,7 +72,7 @@ impl Node {
         let white_conspiracy_num;
         let black_conspiracy_num;
 
-        if state.plies % 2 == 0 {
+        if state.plies() % 2 == 0 {
             black_conspiracy_num = ConspiracyNumber::Num(state.num_children());
             white_conspiracy_num = ConspiracyNumber::Num(1);
         } else {
@@ -91,7 +89,7 @@ impl Node {
 
     // black, white
     fn base_conspiracy_number(&self) -> (u64, u64) {
-        if self.state.plies % 2 == 0 {
+        if self.state.plies() % 2 == 0 {
             (self.state.num_children(), 1)
         } else {
             (1, self.state.num_children())
@@ -111,11 +109,6 @@ impl Node {
             _ => {}
         }
     }
-
-    fn is_max_node(&self) -> bool {
-        // a Node is a max node when white is to play
-        self.state.plies % 2 == 0
-    }
 }
 
 struct TranspositionTable {
@@ -131,7 +124,7 @@ impl TranspositionTable {
 
     fn lookup(&self, key: u64) -> Option<NodeIndex> {
         let index = self.index(key);
-        if (self.keys[index] == key && key != 0) {
+        if self.keys[index] == key && key != 0 {
             return Some(self.values[index].unwrap());
         } else {
             return None;
@@ -186,8 +179,8 @@ impl ConspiracySolver {
 
         self.expand(self.root);
         root_node = self.node(self.root).clone();
-        while (root_node.black_conspiracy_num > ConspiracyNumber::Num(0)
-            && root_node.white_conspiracy_num > ConspiracyNumber::Num(0))
+        while root_node.black_conspiracy_num > ConspiracyNumber::Num(0)
+            && root_node.white_conspiracy_num > ConspiracyNumber::Num(0)
         {
             if root_node.white_conspiracy_num < root_node.black_conspiracy_num {
                 self.decrease_black();
@@ -244,10 +237,7 @@ impl ConspiracySolver {
     fn expand(&mut self, expand_index: NodeIndex) {
         let node = self.node(expand_index).clone();
 
-        let mut black_conspiracy_num = node.black_conspiracy_num;
-        let mut white_conspiracy_num = node.white_conspiracy_num;
-
-        let mut sons: Vec<GameState> = node
+        let sons: Vec<GameState> = node
             .state
             .valid_moves()
             .into_iter()
@@ -255,7 +245,7 @@ impl ConspiracySolver {
             .collect();
 
         // while exiting out early, may be helpfull, for testing purposes it's best to leave it be
-        'outer: for mut son in sons {
+        for son in sons {
             // first find out if the node exists in the tree
             // this is decently fast, but takes up memory,
             // the paper doesn't directly propose a way of making this fast
@@ -326,8 +316,7 @@ impl ConspiracySolver {
             if node.black_conspiracy_num != changed_node.black_conspiracy_num
                 || node.white_conspiracy_num != changed_node.white_conspiracy_num
             {
-                let mut parents: Vec<NodeIndex> =
-                    self.tree.neighbors_directed(top, Incoming).collect();
+                let parents: Vec<NodeIndex> = self.tree.neighbors_directed(top, Incoming).collect();
                 stack.append(&mut parents.clone());
             }
         }
@@ -341,7 +330,7 @@ impl ConspiracySolver {
         let mut current = self.root;
         let mut children: Vec<NodeIndex> =
             self.tree.neighbors_directed(current, Outgoing).collect();
-        while (children.len() != 0) {
+        while children.len() != 0 {
             let pairs: Vec<(NodeIndex, Node)> = children
                 .into_iter()
                 .map(|i| (i, self.tree[i].clone()))
@@ -411,7 +400,6 @@ impl ConspiracySolver {
 mod conspiracy_tests {
     use crate::gamestate::GameState;
     use crate::solver::ConspiracySolver;
-    use crate::solver::Node;
 
     #[test]
     fn easy_test() {

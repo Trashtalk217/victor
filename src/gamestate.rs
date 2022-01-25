@@ -10,7 +10,6 @@ use std::cmp::min;
 pub struct GameState {
     pub mask: u64,
     pub position: u64,
-    pub plies: i32,
 }
 
 impl GameState {
@@ -18,7 +17,6 @@ impl GameState {
         GameState {
             mask: 0,
             position: 0,
-            plies: 0,
         }
     }
 
@@ -36,7 +34,11 @@ impl GameState {
         state
     }
 
-    pub fn potential_threats(&self) -> Vec<u64> {
+    pub fn plies(&self) -> u32 {
+        self.mask.count_ones()
+    }
+
+    pub fn threats(&self) -> Vec<u64> {
         // gives back the groups the current player can still make
         let opponent_mask = self.position ^ self.mask;
         GROUPS
@@ -129,8 +131,12 @@ impl GameState {
         self.position + self.mask
     }
 
+    pub fn playable_mask(&self) -> u64 {
+        (self.mask + BOTTOM_MASK) & BOARD_MASK
+    }
+
     pub fn square_is_playable(&self, square: u64) -> bool {
-        square.is_subset(&((self.mask + BOTTOM_MASK) & BOARD_MASK))
+        square.is_subset(&(self.playable_mask()))
     }
 
     // specific to a 7x6 board
@@ -177,7 +183,6 @@ impl GameState {
         GameState {
             position: self.position ^ self.mask,
             mask: self.mask | square,
-            plies: self.plies + 1,
         }
     }
 
@@ -193,12 +198,11 @@ impl GameState {
         GameState {
             position: self.position ^ self.mask,
             mask: self.mask | (self.mask + u64::bit_mask(col, 0)),
-            plies: self.plies + 1,
         }
     }
 
     pub fn is_successor(&self, other: &Self) -> bool {
-        if (other.plies + self.plies) % 2 == 0 {
+        if (other.plies() + self.plies()) % 2 == 0 {
             other.mask.is_subset(&self.mask) && other.position.is_subset(&self.position)
         } else {
             other.mask.is_subset(&self.mask)
@@ -211,7 +215,7 @@ impl ToString for GameState {
     fn to_string(&self) -> String {
         let mut result = String::with_capacity((HEIGHT * (WIDTH + 1) + 13) as usize);
 
-        let (current, other) = match self.plies % 2 {
+        let (current, other) = match self.plies() % 2 {
             0 => ('●', '○'),
             _ => ('○', '●'),
         };
@@ -234,7 +238,7 @@ impl ToString for GameState {
             result.push_str("\n");
         }
 
-        result.push_str(match self.plies % 2 {
+        result.push_str(match self.plies() % 2 {
             0 => "White to play",
             _ => "Black to play",
         });

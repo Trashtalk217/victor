@@ -10,6 +10,7 @@ itertools = "^0.10.1"
 once_cell = "1.8.0"
 petgraph = "0.5.1"
 regex = "1.5.4"
+bitvector = "0.1.5"
 
 [profile.release]
 debug = true

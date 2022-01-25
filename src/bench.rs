@@ -8,7 +8,6 @@ use crate::eval::eval;
 use crate::eval::Evaluator;
 use crate::gamestate::GameState;
 use crate::solver::ConspiracySolver;
-use crate::solver::Node;
 
 type Test = (String, i32);
 
@@ -43,8 +42,8 @@ pub fn eval_test(filename: &str) {
         let score = eval(&state);
 
         if score != 0 {
-            if (expected <= 0 && score == -1 && state.plies % 2 == 0)
-                || (expected < 0 && score == 1 && state.plies % 2 == 1)
+            if (expected <= 0 && score == -1 && (state.plies() % 2 == 0))
+                || (expected < 0 && score == 1 && (state.plies() % 2 == 1))
             {
                 successfull_evaluations += 1;
             } else {
@@ -86,11 +85,12 @@ pub fn eval_test_two(filename: &str) {
         nodes += num_nodes;
 
         // white to play
-        if state.plies % 2 == 0 && ((expected > 0 && score == 1) || (expected <= 0 && score == -1))
+        if state.plies() % 2 == 0
+            && ((expected > 0 && score == 1) || (expected <= 0 && score == -1))
         {
             // white to play
             successfull_evaluations += 1;
-        } else if state.plies % 2 == 1
+        } else if state.plies() % 2 == 1
             && ((expected < 0 && score == 1) || (expected >= 0 && score == -1))
         {
             // black to play

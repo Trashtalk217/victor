@@ -1,6 +1,9 @@
+use bitvector::BitVector;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::collections::HashMap;
+use std::iter::FromIterator;
 use std::ops::Range;
 
 pub const WIDTH: u64 = 7;
@@ -15,11 +18,11 @@ pub const DIAGONAL_UP: u64 = extend_thrice(1, HEIGHT + 2);
 pub const DIAGONAL_DOWN: u64 = extend_thrice(1, HEIGHT);
 pub const ODD_MASK: u64 = horizontal_stripes((HEIGHT - 2) as i32);
 pub const EVEN_MASK: u64 = BOARD_MASK ^ ODD_MASK;
+pub const NUMBER_OF_GROUPS: u64 =
+    WIDTH * (HEIGHT - 3) + (WIDTH - 3) * HEIGHT + 2 * (WIDTH - 3) * (HEIGHT - 3);
 
 pub static GROUPS: Lazy<Vec<u64>> = Lazy::new(|| {
-    let number_of_groups: u64 =
-        WIDTH * (HEIGHT - 3) + (WIDTH - 3) * HEIGHT + 2 * (WIDTH - 3) * (HEIGHT - 3);
-    let mut groups = Vec::with_capacity(number_of_groups as usize);
+    let mut groups = Vec::with_capacity(NUMBER_OF_GROUPS as usize);
 
     fn directional_groups(cols: Range<u64>, rows: Range<u64>, offset: u64) -> Vec<u64> {
         cols.cartesian_product(rows)
@@ -37,6 +40,14 @@ pub static GROUPS: Lazy<Vec<u64>> = Lazy::new(|| {
     groups.extend(directional_groups(0..(WIDTH - 3), 3..HEIGHT, HEIGHT));
 
     groups
+});
+
+pub static GROUP_TO_SINGLE_BIT: Lazy<HashMap<u64, BitVector>> = Lazy::new(|| {
+    HashMap::from_iter(GROUPS.clone().into_iter().enumerate().map(|(i, group)| {
+        let mut bitvec = BitVector::new(NUMBER_OF_GROUPS as usize);
+        bitvec.insert(i);
+        (group, bitvec)
+    }))
 });
 
 pub static CLAIM_EVEN_PAIRS: Lazy<Vec<u64>> = Lazy::new(|| {
@@ -148,6 +159,8 @@ pub trait U64Ext {
     fn column(n: u64) -> Self;
     fn row(n: u64) -> Self;
     fn bit_mask(col: u64, row: u64) -> Self;
+    fn group_to_bit(&self) -> BitVector;
+    fn bit_to_group(b: BitVector) -> Self;
 }
 
 fn to_alphabet(n: u64) -> String {
@@ -353,6 +366,14 @@ impl U64Ext for u64 {
                 .sum();
         }
         0
+    }
+
+    fn group_to_bit(&self) -> BitVector {
+        GROUP_TO_SINGLE_BIT.get(self).unwrap().clone()
+    }
+
+    fn bit_to_group(b: BitVector) -> Self {
+        GROUPS[b.iter().nth(0).unwrap()]
     }
 }
 
